@@ -46,14 +46,23 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_BOUNDARY_TOKEN }}
         run: bash scripts/verify-release-boundary.sh setting
-      - name: Verify Go 1.27 and build runner
+      - name: Verify Go 1.27
+        run: test "$(go env GOVERSION)" = "go1.27.0"
+      - name: Initialize exact CI measurements
         run: |
-          test "$(go env GOVERSION)" = "go1.27.0"
-          go vet ./...
-          go test ./...
-          go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+          : > "$RUNNER_TEMP/gooo-ci-metrics.tsv"
+      - name: Verify vet
+        run: go vet ./...
+      - name: Compile runner
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" compile go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+      - name: Build repository
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" build go build ./...
+      - name: Verify tests
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" test go test ./...
       - name: Generate exact CI evidence
-        run: bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin"
+        run: |
+          bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" conformance bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" "$RUNNER_TEMP/gooo-ci-metrics.tsv"
+          bash scripts/finalize-evidence.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence" "$RUNNER_TEMP/gooo-ci-metrics.tsv"
       - name: Stage immutable release assets
         id: assets
         env:

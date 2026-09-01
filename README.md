@@ -21,6 +21,14 @@ releases. Missing or mismatched tool evidence stays UNKNOWN. The generated
 repair is a real Go file that changes the fixture's behavior; the evidence
 preserves baseline failure and evolved/bootstrap pass terminal records.
 
+Evidence v2 adds exact integer inventory line counts for Go and `.gooo` files,
+CI wall/RSS measurements for compile, build, test, conformance, and integration,
+zero-valued local execution counters, and exact per-case test counters. CI
+rejects missing, null, string, and non-integer measurements, and compares the
+fixed vector, terminal witnesses, immutable tool observations, generated
+artifacts, and replay bytes with the immutable v0.1.0 evidence.
+The field contract is recorded in [`contracts/metrics-v2.json`](contracts/metrics-v2.json).
+
 The runner command is:
 
 ```text

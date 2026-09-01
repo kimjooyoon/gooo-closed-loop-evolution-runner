@@ -13,6 +13,16 @@ independent bootstrap, and replay/finalization. Every case records each
 stage's input/output digest, capability, terminal reason, next operation,
 wall_ms, and peak_rss_kib.
 
+The evidence schema is `gooo/closed-loop-evolution-runner/evidence/v2`.
+Inventory also records `go_physical_lines` and `gooo_physical_lines`.
+CI records integer `wall_ms` and `peak_rss_kib` pairs for compile, build, test,
+conformance, and integration. Local test, build, vet, conformance, and
+integration execution fields are always exactly zero. Each case records
+`tests_total`, `tests_selected`, `tests_executed`, `tests_reused`,
+`tests_failed`, and `tests_unknown` as integers. Missing, null, string, or
+non-integer values fail closed.
+The exact field contract is in [`contracts/metrics-v2.json`](../contracts/metrics-v2.json).
+
 ## Fixed vector
 
 The denominator contains exactly five cases:
@@ -50,5 +60,6 @@ The input repository is read-only. Temporary generations, semantic IR, and
 reports are written only below the caller-owned output directory. The runner
 has zero repository-write, commit, merge, or release authority. GitHub Actions
 is the validation authority for Go 1.27 build, tests, conformance, integration,
-and semantic audit.
-
+and semantic audit. The v0.1.1 conformance path compares the v2 semantic
+projection, five immutable tool observations, generated evolved artifacts,
+and replay bytes against the immutable v0.1.0 evidence before publication.

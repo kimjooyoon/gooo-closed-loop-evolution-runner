@@ -51,3 +51,4 @@ case ordinal=5 id=case-05-byte-identical-replay kind=byte_identical_replay rule=
 
 atomic_abort states=UNKNOWN,REFUTED promote_artifact=false partial_promotion=false
 artifact closed_only=true path=generated/next-generation digest=sha256
+measurement schema=gooo/closed-loop-evolution-runner/metrics/v2 version=v2 integer_fields=go_physical_lines+gooo_physical_lines+compile_wall_ms+compile_peak_rss_kib+build_wall_ms+build_peak_rss_kib+test_wall_ms+test_peak_rss_kib+conformance_wall_ms+conformance_peak_rss_kib+integration_wall_ms+integration_peak_rss_kib local_execution_fields=local_test_executions+local_build_executions+local_vet_executions+local_conformance_executions+local_integration_executions case_fields=tests_total+tests_selected+tests_executed+tests_reused+tests_failed+tests_unknown root_readme_excluded=true

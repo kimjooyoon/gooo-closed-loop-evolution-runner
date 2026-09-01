@@ -109,6 +109,19 @@ func ParseMeta(path string) (MetaSource, error) {
 				return MetaSource{}, fmt.Errorf("line %d: %w", line, parseErr)
 			}
 			meta.Artifact = ArtifactDecl{ClosedOnly: values["closed_only"] == "true", Path: values["path"], Digest: values["digest"]}
+		case "measurement":
+			values, parseErr := keyValues(fields[1:])
+			if parseErr != nil {
+				return MetaSource{}, fmt.Errorf("line %d: %w", line, parseErr)
+			}
+			meta.Measurement = MeasurementDecl{
+				Schema:               values["schema"],
+				Version:              values["version"],
+				IntegerFields:        splitList(values["integer_fields"]),
+				LocalExecutionFields: splitList(values["local_execution_fields"]),
+				CaseFields:           splitList(values["case_fields"]),
+				RootReadmeExcluded:   values["root_readme_excluded"] == "true",
+			}
 		default:
 			return MetaSource{}, fmt.Errorf("line %d: unknown declaration %q", line, fields[0])
 		}
@@ -295,6 +308,18 @@ func validateDeclarations(meta MetaSource, contract Contract, lock ToolLock) err
 	}
 	if !meta.Artifact.ClosedOnly || meta.Artifact.Path == "" || meta.Artifact.Digest != "sha256" {
 		return fmt.Errorf("artifact declaration must be closed-only with sha256 digest")
+	}
+	if meta.Measurement.Schema != "gooo/closed-loop-evolution-runner/metrics/v2" || meta.Measurement.Version != "v2" || !meta.Measurement.RootReadmeExcluded ||
+		!sameStrings(meta.Measurement.IntegerFields, []string{
+			"go_physical_lines", "gooo_physical_lines", "compile_wall_ms", "compile_peak_rss_kib", "build_wall_ms", "build_peak_rss_kib", "test_wall_ms", "test_peak_rss_kib", "conformance_wall_ms", "conformance_peak_rss_kib", "integration_wall_ms", "integration_peak_rss_kib",
+		}) ||
+		!sameStrings(meta.Measurement.LocalExecutionFields, []string{
+			"local_test_executions", "local_build_executions", "local_vet_executions", "local_conformance_executions", "local_integration_executions",
+		}) ||
+		!sameStrings(meta.Measurement.CaseFields, []string{
+			"tests_total", "tests_selected", "tests_executed", "tests_reused", "tests_failed", "tests_unknown",
+		}) {
+		return fmt.Errorf("measurement contract declaration mismatch")
 	}
 	if len(lock.Tools) != 5 {
 		return fmt.Errorf("immutable tool denominator must contain five tools")

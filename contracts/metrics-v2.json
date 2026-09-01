@@ -1,0 +1,59 @@
+{
+  "schema": "gooo/closed-loop-evolution-runner/metrics/v2",
+  "version": "v2",
+  "fixed": true,
+  "integer_fields": {
+    "inventory": [
+      "go_physical_lines",
+      "gooo_physical_lines"
+    ],
+    "ci": [
+      "compile_wall_ms",
+      "compile_peak_rss_kib",
+      "build_wall_ms",
+      "build_peak_rss_kib",
+      "test_wall_ms",
+      "test_peak_rss_kib",
+      "conformance_wall_ms",
+      "conformance_peak_rss_kib",
+      "integration_wall_ms",
+      "integration_peak_rss_kib",
+      "local_test_executions",
+      "local_build_executions",
+      "local_vet_executions",
+      "local_conformance_executions",
+      "local_integration_executions"
+    ],
+    "case": [
+      "tests_total",
+      "tests_selected",
+      "tests_executed",
+      "tests_reused",
+      "tests_failed",
+      "tests_unknown"
+    ]
+  },
+  "ci_measurement_sources": {
+    "compile": "go build -trimpath -o runner ./cmd/gooo-closed-loop-evolution-runner",
+    "build": "go build ./...",
+    "test": "go test ./...",
+    "conformance": "bash scripts/conformance.sh runner metrics-file",
+    "integration": "bash scripts/integration.sh evidence-directory"
+  },
+  "local_execution_fields": {
+    "local_test_executions": 0,
+    "local_build_executions": 0,
+    "local_vet_executions": 0,
+    "local_conformance_executions": 0,
+    "local_integration_executions": 0
+  },
+  "inventory": {
+    "root_readme_excluded": true
+  },
+  "fail_closed": {
+    "missing": "reject",
+    "null": "reject",
+    "string": "reject",
+    "non_integer_number": "reject"
+  }
+}

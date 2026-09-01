@@ -9,7 +9,7 @@ import (
 const (
 	MetaSchema      = "gooo/closed-loop-evolution-runner/source/v1"
 	ContractSchema  = "gooo/closed-loop-evolution-runner/denominator/v1"
-	EvidenceSchema  = "gooo/closed-loop-evolution-runner/evidence/v1"
+	EvidenceSchema  = "gooo/closed-loop-evolution-runner/evidence/v2"
 	CandidateSchema = "gooo/closed-loop-evolution-runner/candidate/v1"
 	ToolLockSchema  = "gooo/closed-loop-evolution-runner/immutable-tool-lock/v1"
 	StateClosed     = "CLOSED"
@@ -34,6 +34,7 @@ type MetaSource struct {
 	Cases         []CaseDecl
 	AtomicAbort   AtomicAbortDecl
 	Artifact      ArtifactDecl
+	Measurement   MeasurementDecl
 	SourceDigest  string
 }
 
@@ -83,6 +84,15 @@ type ArtifactDecl struct {
 	ClosedOnly bool
 	Path       string
 	Digest     string
+}
+
+type MeasurementDecl struct {
+	Schema               string
+	Version              string
+	IntegerFields        []string
+	LocalExecutionFields []string
+	CaseFields           []string
+	RootReadmeExcluded   bool
 }
 
 type Contract struct {
@@ -271,6 +281,12 @@ type CaseResult struct {
 	Improvement      ImprovementPair  `json:"improvement"`
 	AtomicAbort      bool             `json:"atomic_abort"`
 	PromotedArtifact bool             `json:"promoted_artifact"`
+	TestsTotal       int              `json:"tests_total"`
+	TestsSelected    int              `json:"tests_selected"`
+	TestsExecuted    int              `json:"tests_executed"`
+	TestsReused      int              `json:"tests_reused"`
+	TestsFailed      int              `json:"tests_failed"`
+	TestsUnknown     int              `json:"tests_unknown"`
 	Unknown          *Unknown         `json:"unknown,omitempty"`
 }
 
@@ -284,6 +300,8 @@ type Summary struct {
 type Inventory struct {
 	GoFiles            int  `json:"go_files"`
 	GoooFiles          int  `json:"gooo_files"`
+	GoPhysicalLines    int  `json:"go_physical_lines"`
+	GoooPhysicalLines  int  `json:"gooo_physical_lines"`
 	PhysicalLines      int  `json:"physical_lines"`
 	DescendantDirs     int  `json:"descendant_dirs"`
 	RegularFiles       int  `json:"regular_files"`
@@ -305,11 +323,26 @@ type TestMetrics struct {
 }
 
 type Metrics struct {
-	WallMS     int              `json:"wall_ms"`
-	PeakRSSKiB int              `json:"peak_rss_kib"`
-	Inventory  Inventory        `json:"inventory"`
-	Generated  GeneratedMetrics `json:"generated"`
-	Tests      TestMetrics      `json:"tests"`
+	WallMS                     int              `json:"wall_ms"`
+	PeakRSSKiB                 int              `json:"peak_rss_kib"`
+	Inventory                  Inventory        `json:"inventory"`
+	Generated                  GeneratedMetrics `json:"generated"`
+	Tests                      TestMetrics      `json:"tests"`
+	CompileWallMS              int              `json:"compile_wall_ms"`
+	CompilePeakRSSKiB          int              `json:"compile_peak_rss_kib"`
+	BuildWallMS                int              `json:"build_wall_ms"`
+	BuildPeakRSSKiB            int              `json:"build_peak_rss_kib"`
+	TestWallMS                 int              `json:"test_wall_ms"`
+	TestPeakRSSKiB             int              `json:"test_peak_rss_kib"`
+	ConformanceWallMS          int              `json:"conformance_wall_ms"`
+	ConformancePeakRSSKiB      int              `json:"conformance_peak_rss_kib"`
+	IntegrationWallMS          int              `json:"integration_wall_ms"`
+	IntegrationPeakRSSKiB      int              `json:"integration_peak_rss_kib"`
+	LocalTestExecutions        int              `json:"local_test_executions"`
+	LocalBuildExecutions       int              `json:"local_build_executions"`
+	LocalVetExecutions         int              `json:"local_vet_executions"`
+	LocalConformanceExecutions int              `json:"local_conformance_executions"`
+	LocalIntegrationExecutions int              `json:"local_integration_executions"`
 }
 
 type Authority struct {

@@ -7,6 +7,7 @@ meta="$repo_root/.gooo/closed-loop-evolution-runner.gooo"
 evidence="$evidence_dir/evidence.json"
 test -f "$meta"
 test -f "$evidence"
+bash "$repo_root/scripts/validate-evidence.sh" "$evidence"
 
 grep -q '^precedence REFUTED>UNKNOWN>CLOSED$' "$meta"
 grep -q '^unknown_fields stage,step,reason,unknown_class,next_operation,blocked_by$' "$meta"
@@ -14,7 +15,7 @@ grep -q '^atomic_abort states=UNKNOWN,REFUTED promote_artifact=false partial_pro
 test "$(grep -c '^stage ordinal=' "$meta")" = 8
 
 jq -e '
-	.schema == "gooo/closed-loop-evolution-runner/evidence/v1" and
+	.schema == "gooo/closed-loop-evolution-runner/evidence/v2" and
 	.fixed_case_count == 5 and .fixed_stage_count == 8 and
 	.summary == {generated:5,closed:2,unknown:2,refuted:1} and
 	([.cases[] | select(.state == "UNKNOWN") | .unknown | keys | sort] | all(. == ["blocked_by","next_operation","reason","stage","step","unknown_class"])) and
