@@ -439,9 +439,17 @@ func finalizeCase(context *runContext, declared CaseDecl, rule RuleDecl, result 
 		result.Improvement.State = StateRefuted
 	}
 	if result.State != rule.Outcome {
-		return CaseResult{}, fmt.Errorf("case %q evaluated as %s; declared rule %q requires %s", declared.ID, result.State, rule.ID, rule.Outcome)
+		return CaseResult{}, fmt.Errorf("case %q evaluated as %s; declared rule %q requires %s (baseline=%s build=%s evolved=%s bootstrap=%s stages=%s)", declared.ID, result.State, rule.ID, rule.Outcome, result.Baseline.Status, result.Build.Status, result.Evolved.Status, result.Bootstrap.Status, stageReasons(result.Stages))
 	}
 	return result, nil
+}
+
+func stageReasons(stages []StageEvidence) string {
+	parts := make([]string, 0, len(stages))
+	for _, stage := range stages {
+		parts = append(parts, stage.ID+":"+stage.TerminalReason)
+	}
+	return strings.Join(parts, ",")
 }
 
 func unknownAt(context *runContext, stage int, step, reason, unknownClass, next string, blockedBy []string) Unknown {
