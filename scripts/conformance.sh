@@ -58,10 +58,9 @@ jq -e '
 jq -S 'del(.metrics, .artifact_count, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/output/evidence.json" > "$work/first-semantic.json"
 jq -S 'del(.metrics, .artifact_count, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/second-output/evidence.json" > "$work/second-semantic.json"
 cmp -s "$work/first-semantic.json" "$work/second-semantic.json"
-cmp -s "$work/output/cases/case-01-one-bug-repair/generated/next-generation/compiler/generated/normalization_fix.go" "$work/second-output/cases/case-01-one-bug-repair/generated/next-generation/compiler/generated/normalization_fix.go"
-cmp -s "$work/output/cases/case-05-byte-identical-replay/generated/next-generation/compiler/generated/normalization_fix.go" "$work/second-output/cases/case-05-byte-identical-replay/generated/next-generation/compiler/generated/normalization_fix.go"
+cmp -s "$work/output/cases/case-01-one-bug-repair/generated/next-generation/generated/normalization_fix.go" "$work/second-output/cases/case-01-one-bug-repair/generated/next-generation/generated/normalization_fix.go"
+cmp -s "$work/output/cases/case-05-byte-identical-replay/generated/next-generation/generated/normalization_fix.go" "$work/second-output/cases/case-05-byte-identical-replay/generated/next-generation/generated/normalization_fix.go"
 
 rm -rf "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"
 cp -R "$work/output" "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"
 printf 'closed-loop conformance: CLOSED vector and fail-closed frontier verified\n'
-

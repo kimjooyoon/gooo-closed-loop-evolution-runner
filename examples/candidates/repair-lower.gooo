@@ -3,8 +3,7 @@ candidate id=repair-lower type=typed_ir_rewrite priority=1
 origin author=drift source=counterexample:normalizer
 capability typed_rewrite
 effect pre=READ_INPUT+READ_IMMUTABLE_TOOL post=WRITE_CALLER_OUTPUT
-footprint read=compiler/main.go,compiler/main_test.go write=compiler/generated/normalization_fix.go
-rewrite input=compiler/main.go output=compiler/generated/normalization_fix.go test=TestCounterexample
-operation kind=install_normalizer artifact=compiler/generated/normalization_fix.go value=lower
+footprint read=main.go,main_test.go write=generated/normalization_fix.go
+rewrite input=main.go output=generated/normalization_fix.go test=TestCounterexample
+operation kind=install_normalizer artifact=generated/normalization_fix.go value=lower
 terminal baseline=BASELINE_COUNTEREXAMPLE_OBSERVED evolved=EVOLVED_GENERATION_PASSES
-

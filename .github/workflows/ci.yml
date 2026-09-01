@@ -81,8 +81,8 @@ jobs:
             .baseline.status == "FAIL" and .evolved.status == "PASS" and
             .bootstrap.status == "PASS" and .stages[4].terminal_reason == "NEXT_GENERATION_BUILT"
           ' "$evidence"
-          test -f "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/compiler/generated/normalization_fix.go"
-          grep -q 'normalizationMode = "upper"' "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/compiler/generated/normalization_fix.go"
+          test -f "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated/normalization_fix.go"
+          grep -q 'normalizationMode = "upper"' "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated/normalization_fix.go"
 
   release-boundary:
     needs: integration
