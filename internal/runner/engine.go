@@ -385,7 +385,6 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 	bootstrap := runTest(bootstrapRoot, chosen.Rewrite.Test)
 	result.Bootstrap = bootstrap
 	context.ExecutedTests++
-	bootstrapDigest, _ := DigestValue(bootstrap)
 	bootstrapOutputDigest, _ := DigestValue(map[string]string{"artifact": generated.Digest, "test": bootstrap.StableDigest})
 	if bootstrap.Status != "PASS" || bootstrap.StableDigest != evolved.StableDigest {
 		finishStage(&result.Stages[6], stageStarted, generationDigest, bootstrapOutputDigest, "INDEPENDENT_BOOTSTRAP_DRIFT")
@@ -866,4 +865,15 @@ func fixedVector(cases []CaseResult) string {
 		parts = append(parts, item.ID+"="+item.State)
 	}
 	return strings.Join(parts, ",")
+}
+
+func safeName(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.ReplaceAll(value, "/", "-")
+	value = strings.ReplaceAll(value, "\\", "-")
+	value = strings.ReplaceAll(value, " ", "-")
+	if value == "" {
+		return "unnamed"
+	}
+	return value
 }
