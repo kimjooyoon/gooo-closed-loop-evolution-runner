@@ -9,4 +9,3 @@ func TestCounterexample(t *testing.T) {
 		t.Fatalf("counterexample: got %q, want %q", got, want)
 	}
 }
-

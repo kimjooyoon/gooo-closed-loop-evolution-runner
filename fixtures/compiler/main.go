@@ -17,4 +17,3 @@ func CompileToken(input string) string {
 		return input
 	}
 }
-
