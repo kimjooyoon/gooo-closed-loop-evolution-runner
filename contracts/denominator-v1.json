@@ -1,0 +1,15 @@
+{
+  "schema": "gooo/closed-loop-evolution-runner/denominator/v1",
+  "id": "closed-loop-evolution-runner-v1",
+  "version": "v1",
+  "cell_count": 5,
+  "fixed": true,
+  "cases": [
+    {"ordinal": 1, "id": "case-01-one-bug-repair", "kind": "one_bug_repair", "expected": "CLOSED"},
+    {"ordinal": 2, "id": "case-02-ambiguous-candidates", "kind": "ambiguous_candidates", "expected": "UNKNOWN"},
+    {"ordinal": 3, "id": "case-03-semantic-drift", "kind": "semantic_drift", "expected": "REFUTED"},
+    {"ordinal": 4, "id": "case-04-missing-immutable-tool", "kind": "missing_immutable_tool", "expected": "UNKNOWN"},
+    {"ordinal": 5, "id": "case-05-byte-identical-replay", "kind": "byte_identical_replay", "expected": "CLOSED"}
+  ]
+}
+

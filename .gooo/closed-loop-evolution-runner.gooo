@@ -1,0 +1,54 @@
+gooo closed_loop_evolution_runner v1
+namespace gooo://closed-loop-evolution-runner/v1
+
+# This metacode is the semantic authority. Go only parses, lowers, executes,
+# and verifies the declared closed loop.
+effect READ_INPUT
+effect READ_IMMUTABLE_TOOL
+effect WRITE_CALLER_OUTPUT
+effect EXECUTE_TEMPORARY_GENERATION
+effect VERIFY_SELECTION
+effect VERIFY_BOOTSTRAP
+effect REPOSITORY_WRITE
+effect COMMIT
+effect MERGE
+effect RELEASE_MUTATION
+
+capability counterexample_observer READ_INPUT
+capability immutable_tool_consumer READ_INPUT READ_IMMUTABLE_TOOL
+capability typed_rewriter READ_INPUT READ_IMMUTABLE_TOOL WRITE_CALLER_OUTPUT
+capability synthesizer READ_INPUT WRITE_CALLER_OUTPUT
+capability temporary_generator READ_INPUT EXECUTE_TEMPORARY_GENERATION WRITE_CALLER_OUTPUT
+capability test_selector READ_INPUT VERIFY_SELECTION
+capability bootstrap_witness READ_INPUT VERIFY_BOOTSTRAP
+capability replay_verifier READ_INPUT VERIFY_SELECTION VERIFY_BOOTSTRAP
+
+precedence REFUTED>UNKNOWN>CLOSED
+unknown_fields stage,step,reason,unknown_class,next_operation,blocked_by
+forbidden_effects REPOSITORY_WRITE COMMIT MERGE RELEASE_MUTATION
+
+stage ordinal=1 id=counterexample_observation capability=counterexample_observer terminal=BASELINE_COUNTEREXAMPLE_OBSERVED next_operation=RESOLVE_TYPED_REWRITE
+stage ordinal=2 id=immutable_tool_resolution capability=immutable_tool_consumer terminal=IMMUTABLE_TOOLS_RESOLVED next_operation=LOWER_TYPED_REWRITE
+stage ordinal=3 id=typed_rewrite capability=typed_rewriter terminal=TYPED_REWRITE_LOWERED next_operation=SYNTHESIZE_REPAIR_IR
+stage ordinal=4 id=synthesis capability=synthesizer terminal=REPAIR_IR_SYNTHESIZED next_operation=CREATE_TEMPORARY_NEXT_GENERATION
+stage ordinal=5 id=temporary_next_generation capability=temporary_generator terminal=NEXT_GENERATION_BUILT next_operation=SELECT_CAUSAL_TESTS
+stage ordinal=6 id=selection_verification capability=test_selector terminal=SELECTED_TESTS_PASS next_operation=RUN_INDEPENDENT_BOOTSTRAP
+stage ordinal=7 id=independent_bootstrap capability=bootstrap_witness terminal=INDEPENDENT_BOOTSTRAP_PASS next_operation=COMPARE_REPLAY
+stage ordinal=8 id=replay_and_finalize capability=replay_verifier terminal=BYTE_IDENTICAL_REPLAY next_operation=EMIT_CLOSED_EVIDENCE
+
+rule id=one_bug_repair condition=baseline_fail_evolved_pass_bootstrap_pass outcome=CLOSED terminal=EVOLVED_GENERATION_PASSES
+rule id=ambiguous_candidates condition=equal_priority_candidates outcome=UNKNOWN terminal=AMBIGUOUS_TYPED_REWRITES
+rule id=semantic_drift condition=evolved_terminal_or_behavior_drifts outcome=REFUTED terminal=SEMANTIC_DRIFT
+rule id=missing_immutable_tool condition=immutable_tool_evidence_missing_or_mismatched outcome=UNKNOWN terminal=IMMUTABLE_TOOL_EVIDENCE_UNAVAILABLE
+rule id=byte_identical_replay condition=second_generation_bytes_and_terminals_equal outcome=CLOSED terminal=BYTE_IDENTICAL_REPLAY
+
+denominator id=closed-loop-evolution-runner-v1 cell_count=5
+case ordinal=1 id=case-01-one-bug-repair kind=one_bug_repair rule=one_bug_repair expected=CLOSED candidates=repair-upper required_tool=counterexample-reducer@v0.1.1 replay=false
+case ordinal=2 id=case-02-ambiguous-candidates kind=ambiguous_candidates rule=ambiguous_candidates expected=UNKNOWN candidates=repair-upper-a,repair-upper-b required_tool=rewriter@v0.1.1 replay=false
+case ordinal=3 id=case-03-semantic-drift kind=semantic_drift rule=semantic_drift expected=REFUTED candidates=repair-lower required_tool=sandbox@v0.1.1 replay=false
+case ordinal=4 id=case-04-missing-immutable-tool kind=missing_immutable_tool rule=missing_immutable_tool expected=UNKNOWN candidates=repair-upper required_tool=missing-bootstrap@v9.9.9 replay=false
+case ordinal=5 id=case-05-byte-identical-replay kind=byte_identical_replay rule=byte_identical_replay expected=CLOSED candidates=repair-upper replay=true required_tool=diverse-bootstrap@v0.1.1
+
+atomic_abort states=UNKNOWN,REFUTED promote_artifact=false partial_promotion=false
+artifact closed_only=true path=generated/next-generation digest=sha256
+

@@ -1,0 +1,106 @@
+name: Immutable closed-loop release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: New unused annotated tag, for example v0.1.0
+        required: true
+        type: string
+      commit:
+        description: Exact merged main SHA targeted by the new tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.0
+          cache: false
+      - name: Refuse reused tag or release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          test -z "$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | tr -d '\n')"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "release already exists; refusing overwrite" >&2
+            exit 1
+          fi
+      - name: Verify immutable repository setting
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOUNDARY_TOKEN }}
+        run: bash scripts/verify-release-boundary.sh setting
+      - name: Verify Go 1.27 and build runner
+        run: |
+          test "$(go env GOVERSION)" = "go1.27.0"
+          go vet ./...
+          go test ./...
+          go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+      - name: Generate exact CI evidence
+        run: bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin"
+      - name: Create annotated tag
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          git tag -a "$RELEASE_TAG" "$RELEASE_COMMIT" -m "gooo-closed-loop-evolution-runner $RELEASE_TAG"
+          git push origin "$RELEASE_TAG"
+      - name: Stage immutable release assets
+        id: assets
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/release-assets"
+          mkdir -p "$stage"
+          git archive --format=tar.gz --prefix="gooo-closed-loop-evolution-runner-$RELEASE_TAG/" "$RELEASE_COMMIT" > "$stage/gooo-closed-loop-evolution-runner-source-$RELEASE_TAG.tar.gz"
+          tar -czf "$stage/gooo-closed-loop-evolution-runner-evidence-$RELEASE_TAG.tar.gz" -C "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence" .
+          jq -n --arg schema "gooo/closed-loop-evolution-runner/release-manifest/v1" --arg tag "$RELEASE_TAG" --arg commit "$RELEASE_COMMIT" '{schema:$schema,tag:$tag,commit:$commit,assets:[]}' > "$stage/release-manifest-$RELEASE_TAG.json"
+          (cd "$stage" && sha256sum *.tar.gz *.json > SHA256SUMS)
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+        run: gh release create "$RELEASE_TAG" --draft --verify-tag --title "$RELEASE_TAG" --notes "Immutable release for merged main $RELEASE_COMMIT."
+      - name: Upload staged assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release upload "$RELEASE_TAG" "$RUNNER_TEMP/release-assets"/*
+      - name: Publish release once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: gh release edit "$RELEASE_TAG" --draft=false
+      - name: Verify immutable release, exact tag object, and asset digests
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_BOUNDARY_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          bash scripts/verify-release-boundary.sh release "$RELEASE_TAG" "$RELEASE_COMMIT"
+          response=$(gh api -H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2026-03-10' "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG")
+          for asset in "$RUNNER_TEMP/release-assets"/*; do
+            name=$(basename "$asset")
+            expected="sha256:$(sha256sum "$asset" | awk '{print $1}')"
+            observed=$(jq -er --arg name "$name" '.assets[] | select(.name == $name) | .digest' <<<"$response")
+            test "$expected" = "$observed"
+          done
+
