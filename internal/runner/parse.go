@@ -398,7 +398,7 @@ func splitList(value string) []string {
 		return nil
 	}
 	var result []string
-	for _, part := range strings.Split(value, ",") {
+	for _, part := range strings.FieldsFunc(value, func(character rune) bool { return character == ',' || character == '+' }) {
 		if part = strings.TrimSpace(part); part != "" {
 			result = append(result, part)
 		}
