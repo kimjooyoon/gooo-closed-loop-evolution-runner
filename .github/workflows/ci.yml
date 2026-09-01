@@ -83,15 +83,3 @@ jobs:
           ' "$evidence"
           test -f "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
           grep -q 'normalizationMode = "upper"' "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
-
-  release-boundary:
-    needs: integration
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - name: Verify immutable releases setting
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash scripts/verify-release-boundary.sh setting

@@ -261,6 +261,13 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		return CaseResult{}, err
 	}
 	baseline := runTest(baselineRoot, firstCandidate.Rewrite.Test)
+	if baseline.Status == "FAIL" {
+		baseline.TerminalReason = "BASELINE_COUNTEREXAMPLE_OBSERVED"
+	} else if baseline.Status == "PASS" {
+		baseline.TerminalReason = "BASELINE_COUNTEREXAMPLE_NOT_REPRODUCED"
+	} else {
+		baseline.TerminalReason = "BASELINE_TEST_UNAVAILABLE"
+	}
 	result.Baseline = baseline
 	baselineDigest, _ := DigestValue(baseline)
 	if baseline.Status == "UNAVAILABLE" {
@@ -344,6 +351,9 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		return CaseResult{}, err
 	}
 	build := runCommand(nextRoot, []string{"go", "build", "./..."}, "NEXT_GENERATION_BUILT")
+	if build.Status != "PASS" {
+		build.TerminalReason = "NEXT_GENERATION_BUILD_FAILED"
+	}
 	result.Build, result.Generated = build, generated
 	context.GeneratedFiles += generatedFileCount(generated)
 	context.GeneratedBytes += generated.Bytes
@@ -359,6 +369,13 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 	stageStarted = time.Now()
 	context.SelectedTests++
 	evolved := runTest(nextRoot, chosen.Rewrite.Test)
+	if evolved.Status == "PASS" {
+		evolved.TerminalReason = "EVOLVED_GENERATION_PASSES"
+	} else if evolved.Status == "FAIL" {
+		evolved.TerminalReason = "SEMANTIC_DRIFT"
+	} else {
+		evolved.TerminalReason = "SELECTION_TEST_UNAVAILABLE"
+	}
 	result.Evolved = evolved
 	context.ExecutedTests++
 	evolvedDigest, _ := DigestValue(evolved)
@@ -383,6 +400,13 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		return finalizeCase(context, declared, rule, result)
 	}
 	bootstrap := runTest(bootstrapRoot, chosen.Rewrite.Test)
+	if bootstrap.Status == "PASS" {
+		bootstrap.TerminalReason = "INDEPENDENT_BOOTSTRAP_PASS"
+	} else if bootstrap.Status == "FAIL" {
+		bootstrap.TerminalReason = "INDEPENDENT_BOOTSTRAP_DRIFT"
+	} else {
+		bootstrap.TerminalReason = "INDEPENDENT_BOOTSTRAP_UNAVAILABLE"
+	}
 	result.Bootstrap = bootstrap
 	context.ExecutedTests++
 	bootstrapOutputDigest, _ := DigestValue(map[string]string{"artifact": generated.Digest, "test": bootstrap.StableDigest})
