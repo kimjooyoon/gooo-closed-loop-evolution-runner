@@ -16,7 +16,7 @@ effect RELEASE_MUTATION
 
 capability counterexample_observer READ_INPUT
 capability immutable_tool_consumer READ_INPUT READ_IMMUTABLE_TOOL
-capability typed_rewriter READ_INPUT READ_IMMUTABLE_TOOL WRITE_CALLER_OUTPUT
+capability typed_rewrite READ_INPUT READ_IMMUTABLE_TOOL WRITE_CALLER_OUTPUT
 capability synthesizer READ_INPUT WRITE_CALLER_OUTPUT
 capability temporary_generator READ_INPUT EXECUTE_TEMPORARY_GENERATION WRITE_CALLER_OUTPUT
 capability test_selector READ_INPUT VERIFY_SELECTION
@@ -51,4 +51,3 @@ case ordinal=5 id=case-05-byte-identical-replay kind=byte_identical_replay rule=
 
 atomic_abort states=UNKNOWN,REFUTED promote_artifact=false partial_promotion=false
 artifact closed_only=true path=generated/next-generation digest=sha256
-
