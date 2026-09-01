@@ -51,7 +51,7 @@ type runContext struct {
 	UnknownTests    int
 }
 
-var goTestTiming = regexp.MustCompile(`\([0-9]+\.[0-9]+s\)| [0-9]+\.[0-9]+s`)
+var goTestTiming = regexp.MustCompile(`\([0-9]+\.[0-9]+s\)|[[:space:]][0-9]+\.[0-9]+s`)
 
 func Run(input RunInput) (Evidence, error) {
 	started := time.Now()
@@ -167,7 +167,7 @@ func Run(input RunInput) (Evidence, error) {
 	}
 	peak := peakRSSKiB()
 	evidence := Evidence{
-		Schema: EvidenceSchema, Version: "v1", SourceDigest: context.SourceDigest, ContractDigest: context.ContractDigest,
+		Schema: EvidenceSchema, Version: "v2", SourceDigest: context.SourceDigest, ContractDigest: context.ContractDigest,
 		ToolchainDigest: context.ToolchainDigest, RunnerDigest: context.RunnerDigest,
 		Precedence: append([]string{}, meta.Precedence...), UnknownFields: append([]string{}, meta.UnknownFields...),
 		DenominatorID: meta.Denominator.ID, FixedCaseCount: meta.Denominator.CellCount, FixedStageCount: len(meta.Stages),
@@ -243,7 +243,7 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 	if err := os.MkdirAll(caseRoot, 0o755); err != nil {
 		return CaseResult{}, err
 	}
-	result := CaseResult{Ordinal: declared.Ordinal, ID: declared.ID, Kind: declared.Kind, Expected: declared.Expected, CandidateIDs: append([]string{}, declared.CandidateIDs...), CandidateDigests: candidateDigests(candidates), Improvement: ImprovementPair{State: StateUnknown}}
+	result := CaseResult{Ordinal: declared.Ordinal, ID: declared.ID, Kind: declared.Kind, Expected: declared.Expected, CandidateIDs: append([]string{}, declared.CandidateIDs...), CandidateDigests: candidateDigests(candidates), TestsTotal: 1, Improvement: ImprovementPair{State: StateUnknown}}
 	stages := make([]StageEvidence, len(context.Meta.Stages))
 	empty := emptyDigest()
 	for index, stage := range context.Meta.Stages {
@@ -275,6 +275,7 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		finishStage(&result.Stages[0], stageStarted, fixtureDigest, baselineDigest, "BASELINE_TEST_UNAVAILABLE")
 		blockStages(result.Stages, context.Meta.Stages, 1, baselineDigest, unknown.Reason)
 		result.State, result.Decision, result.AtomicAbort, result.Unknown = StateUnknown, unknown.Reason, true, &unknown
+		result.TestsUnknown = 1
 		context.UnknownTests++
 		return finalizeCase(context, declared, rule, result)
 	}
@@ -303,6 +304,7 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		finishStage(&result.Stages[1], stageStarted, baselineDigest, toolDigest, "IMMUTABLE_TOOL_EVIDENCE_UNAVAILABLE")
 		blockStages(result.Stages, context.Meta.Stages, 2, toolDigest, reason)
 		result.State, result.Decision, result.AtomicAbort, result.Unknown = StateUnknown, unknown.Reason, true, &unknown
+		result.TestsUnknown = 1
 		context.UnknownTests++
 		return finalizeCase(context, declared, rule, result)
 	}
@@ -318,6 +320,7 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		finishStage(&result.Stages[3], stageStarted, candidateDigest, empty, "AMBIGUOUS_TYPED_REWRITES")
 		blockStages(result.Stages, context.Meta.Stages, 4, empty, unknown.Reason)
 		result.State, result.Decision, result.AtomicAbort, result.Unknown = StateUnknown, unknown.Reason, true, &unknown
+		result.TestsUnknown = 1
 		context.UnknownTests++
 		return finalizeCase(context, declared, rule, result)
 	}
@@ -368,6 +371,7 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 
 	stageStarted = time.Now()
 	context.SelectedTests++
+	result.TestsSelected = 1
 	evolved := runTest(nextRoot, chosen.Rewrite.Test)
 	if evolved.Status == "PASS" {
 		evolved.TerminalReason = "EVOLVED_GENERATION_PASSES"
@@ -378,11 +382,13 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 	}
 	result.Evolved = evolved
 	context.ExecutedTests++
+	result.TestsExecuted++
 	evolvedDigest, _ := DigestValue(evolved)
 	if evolved.Status != "PASS" {
 		finishStage(&result.Stages[5], stageStarted, generationDigest, evolvedDigest, "SEMANTIC_DRIFT")
 		blockStages(result.Stages, context.Meta.Stages, 6, evolvedDigest, "SEMANTIC_DRIFT")
 		result.State, result.Decision, result.AtomicAbort = StateRefuted, "SEMANTIC_DRIFT", true
+		result.TestsFailed = 1
 		context.FailedTests++
 		return finalizeCase(context, declared, rule, result)
 	}
@@ -409,11 +415,13 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 	}
 	result.Bootstrap = bootstrap
 	context.ExecutedTests++
+	result.TestsExecuted++
 	bootstrapOutputDigest, _ := DigestValue(map[string]string{"artifact": generated.Digest, "test": bootstrap.StableDigest})
 	if bootstrap.Status != "PASS" || bootstrap.StableDigest != evolved.StableDigest {
 		finishStage(&result.Stages[6], stageStarted, generationDigest, bootstrapOutputDigest, "INDEPENDENT_BOOTSTRAP_DRIFT")
 		blockStages(result.Stages, context.Meta.Stages, 7, bootstrapOutputDigest, "INDEPENDENT_BOOTSTRAP_DRIFT")
 		result.State, result.Decision, result.AtomicAbort = StateRefuted, "INDEPENDENT_BOOTSTRAP_DRIFT", true
+		result.TestsFailed = 1
 		return finalizeCase(context, declared, rule, result)
 	}
 	finishStage(&result.Stages[6], stageStarted, generationDigest, bootstrapOutputDigest, "INDEPENDENT_BOOTSTRAP_PASS")
@@ -439,6 +447,8 @@ func evaluateCase(context *runContext, declared CaseDecl) (CaseResult, error) {
 		context.ExecutedTests++
 		result.ReplayEqual = sameArtifact(generated, replayGenerated) && sameTerminal(evolved, replayTest)
 		replayDigest, _ := DigestValue(map[string]any{"artifact": replayGenerated, "test": replayTest})
+		result.TestsExecuted++
+		result.TestsReused = 1
 		if !result.ReplayEqual {
 			finishStage(&result.Stages[7], stageStarted, bootstrapOutputDigest, replayDigest, "BYTE_IDENTICAL_REPLAY_MISMATCH")
 			result.State, result.Decision, result.AtomicAbort = StateRefuted, "BYTE_IDENTICAL_REPLAY_MISMATCH", true
@@ -463,7 +473,7 @@ func finalizeCase(context *runContext, declared CaseDecl, rule RuleDecl, result 
 		result.Improvement.State = StateRefuted
 	}
 	if result.State != rule.Outcome {
-		return CaseResult{}, fmt.Errorf("case %q evaluated as %s; declared rule %q requires %s (baseline=%s build=%s evolved=%s bootstrap=%s stages=%s)", declared.ID, result.State, rule.ID, rule.Outcome, result.Baseline.Status, result.Build.Status, result.Evolved.Status, result.Bootstrap.Status, stageReasons(result.Stages))
+		return CaseResult{}, fmt.Errorf("case %q evaluated as %s; declared rule %q requires %s (baseline=%s build=%s evolved=%s bootstrap=%s evolved_stable=%s bootstrap_stable=%s evolved_stdout=%q bootstrap_stdout=%q evolved_stderr=%q bootstrap_stderr=%q stages=%s)", declared.ID, result.State, rule.ID, rule.Outcome, result.Baseline.Status, result.Build.Status, result.Evolved.Status, result.Bootstrap.Status, result.Evolved.StableDigest, result.Bootstrap.StableDigest, result.Evolved.Stdout, result.Bootstrap.Stdout, result.Evolved.Stderr, result.Bootstrap.Stderr, stageReasons(result.Stages))
 	}
 	return result, nil
 }
@@ -768,7 +778,14 @@ func measureInventory(root string) (Inventory, error) {
 			if err != nil {
 				return err
 			}
-			result.PhysicalLines += physicalLines(data)
+			lines := physicalLines(data)
+			result.PhysicalLines += lines
+			if extension == ".go" {
+				result.GoPhysicalLines += lines
+			}
+			if extension == ".gooo" {
+				result.GoooPhysicalLines += lines
+			}
 		}
 		return nil
 	})
@@ -887,9 +904,14 @@ func writeReport(root string, evidence Evidence) error {
 		}
 	}
 	builder.WriteString("\n## Exact integer metrics and authority\n\n")
-	fmt.Fprintf(&builder, "- inventory Go/Gooo/physical_lines: `%d`/`%d`/`%d`; descendant_dirs: `%d`; regular_files: `%d`\n", evidence.Metrics.Inventory.GoFiles, evidence.Metrics.Inventory.GoooFiles, evidence.Metrics.Inventory.PhysicalLines, evidence.Metrics.Inventory.DescendantDirs, evidence.Metrics.Inventory.RegularFiles)
+	fmt.Fprintf(&builder, "- inventory Go/Gooo/physical_lines: `%d`/`%d`/`%d`; Go/Gooo physical lines: `%d`/`%d`; descendant_dirs: `%d`; regular_files: `%d`\n", evidence.Metrics.Inventory.GoFiles, evidence.Metrics.Inventory.GoooFiles, evidence.Metrics.Inventory.PhysicalLines, evidence.Metrics.Inventory.GoPhysicalLines, evidence.Metrics.Inventory.GoooPhysicalLines, evidence.Metrics.Inventory.DescendantDirs, evidence.Metrics.Inventory.RegularFiles)
 	fmt.Fprintf(&builder, "- generated files/bytes: `%d`/`%d`; wall_ms: `%d`; peak_rss_kib: `%d`\n", evidence.Metrics.Generated.Files, evidence.Metrics.Generated.Bytes, evidence.Metrics.WallMS, evidence.Metrics.PeakRSSKiB)
 	fmt.Fprintf(&builder, "- tests total/selected/executed/reused/failed/unknown: `%d`/`%d`/`%d`/`%d`/`%d`/`%d`\n", evidence.Metrics.Tests.Total, evidence.Metrics.Tests.Selected, evidence.Metrics.Tests.Executed, evidence.Metrics.Tests.Reused, evidence.Metrics.Tests.Failed, evidence.Metrics.Tests.Unknown)
+	fmt.Fprintf(&builder, "- CI compile/build/test/conformance/integration wall_ms: `%d`/`%d`/`%d`/`%d`/`%d`; peak_rss_kib: `%d`/`%d`/`%d`/`%d`/`%d`\n", evidence.Metrics.CompileWallMS, evidence.Metrics.BuildWallMS, evidence.Metrics.TestWallMS, evidence.Metrics.ConformanceWallMS, evidence.Metrics.IntegrationWallMS, evidence.Metrics.CompilePeakRSSKiB, evidence.Metrics.BuildPeakRSSKiB, evidence.Metrics.TestPeakRSSKiB, evidence.Metrics.ConformancePeakRSSKiB, evidence.Metrics.IntegrationPeakRSSKiB)
+	fmt.Fprintf(&builder, "- local test/build/vet/conformance/integration executions: `%d`/`%d`/`%d`/`%d`/`%d`\n", evidence.Metrics.LocalTestExecutions, evidence.Metrics.LocalBuildExecutions, evidence.Metrics.LocalVetExecutions, evidence.Metrics.LocalConformanceExecutions, evidence.Metrics.LocalIntegrationExecutions)
+	for _, item := range evidence.Cases {
+		fmt.Fprintf(&builder, "- `%s` tests total/selected/executed/reused/failed/unknown: `%d`/`%d`/`%d`/`%d`/`%d`/`%d`\n", item.ID, item.TestsTotal, item.TestsSelected, item.TestsExecuted, item.TestsReused, item.TestsFailed, item.TestsUnknown)
+	}
 	fmt.Fprintf(&builder, "- repository_writes: `%d`; commit_authority: `%d`; merge_authority: `%d`; release_authority: `%d`\n", evidence.Authority.RepositoryWrites, evidence.Authority.CommitAuthority, evidence.Authority.MergeAuthority, evidence.Authority.ReleaseAuthority)
 	builder.WriteString("- root README.md is excluded from inventory; all generated output is caller-owned.\n")
 	return os.WriteFile(filepath.Join(root, "runner-report.md"), []byte(builder.String()), 0o644)

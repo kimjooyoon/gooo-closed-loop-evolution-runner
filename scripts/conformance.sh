@@ -2,6 +2,7 @@
 set -euo pipefail
 
 binary=${1:?path to the built runner binary is required}
+metrics_file=${2:?CI metrics file is required}
 root=$(pwd)
 work=$(mktemp -d "${RUNNER_TEMP:-/tmp}/gooo-closed-loop-evolution-runner.XXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -34,13 +35,14 @@ test "$before" = "$after"
 	--source-root "$root" >/dev/null
 
 jq -e '
-	.schema == "gooo/closed-loop-evolution-runner/evidence/v1" and
+	.schema == "gooo/closed-loop-evolution-runner/evidence/v2" and
 	.fixed_case_count == 5 and .fixed_stage_count == 8 and
 	.precedence == ["REFUTED", "UNKNOWN", "CLOSED"] and
 	.summary == {generated:5,closed:2,unknown:2,refuted:1} and
 	.authority == {repository_writes:0,commit_authority:0,merge_authority:0,release_authority:0} and
 	.metrics.inventory.root_readme_excluded == true and
 	.metrics.inventory.go_files > 0 and .metrics.inventory.gooo_files > 0 and
+	.metrics.inventory.go_physical_lines > 0 and .metrics.inventory.gooo_physical_lines > 0 and
 	.metrics.inventory.physical_lines > 0 and .metrics.inventory.descendant_dirs > 0 and
 	.metrics.inventory.regular_files > 0 and .metrics.wall_ms > 0 and .metrics.peak_rss_kib > 0 and
 	.metrics.tests == {total:5,selected:3,executed:6,reused:1,failed:1,unknown:2} and
@@ -52,6 +54,11 @@ jq -e '
 	([.cases[] | select(.id == "case-03-semantic-drift") | (.state == "REFUTED" and .promoted_artifact == false and .evolved.status == "FAIL" and .decision == "SEMANTIC_DRIFT")] | all) and
 	([.cases[] | select(.id == "case-04-missing-immutable-tool") | (.state == "UNKNOWN" and .unknown.unknown_class == "TOOL_CONTRACT_MISMATCH")] | all) and
 	([.cases[] | select(.id == "case-05-byte-identical-replay") | (.state == "CLOSED" and .replay_equal == true and .improvement.state == "CLOSED")] | all) and
+	([.cases[] | select(.id == "case-01-one-bug-repair") | {tests_total,tests_selected,tests_executed,tests_reused,tests_failed,tests_unknown} == {tests_total:1,tests_selected:1,tests_executed:2,tests_reused:0,tests_failed:0,tests_unknown:0}] | length) == 1 and
+	([.cases[] | select(.id == "case-02-ambiguous-candidates") | {tests_total,tests_selected,tests_executed,tests_reused,tests_failed,tests_unknown} == {tests_total:1,tests_selected:0,tests_executed:0,tests_reused:0,tests_failed:0,tests_unknown:1}] | length) == 1 and
+	([.cases[] | select(.id == "case-03-semantic-drift") | {tests_total,tests_selected,tests_executed,tests_reused,tests_failed,tests_unknown} == {tests_total:1,tests_selected:1,tests_executed:1,tests_reused:0,tests_failed:1,tests_unknown:0}] | length) == 1 and
+	([.cases[] | select(.id == "case-04-missing-immutable-tool") | {tests_total,tests_selected,tests_executed,tests_reused,tests_failed,tests_unknown} == {tests_total:1,tests_selected:0,tests_executed:0,tests_reused:0,tests_failed:0,tests_unknown:1}] | length) == 1 and
+	([.cases[] | select(.id == "case-05-byte-identical-replay") | {tests_total,tests_selected,tests_executed,tests_reused,tests_failed,tests_unknown} == {tests_total:1,tests_selected:1,tests_executed:3,tests_reused:1,tests_failed:0,tests_unknown:0}] | length) == 1 and
 	([.cases[].stages[] | select(.input_digest == "" or .output_digest == "" or .capability == "" or .terminal_reason == "" or .next_operation == "")] | length) == 0
 ' "$work/output/evidence.json"
 
@@ -60,6 +67,9 @@ jq -S 'del(.metrics, .artifact_count, .cases[].stages[].wall_ms, .cases[].stages
 cmp -s "$work/first-semantic.json" "$work/second-semantic.json"
 cmp -s "$work/output/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go" "$work/second-output/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
 cmp -s "$work/output/cases/case-05-byte-identical-replay/generated/next-generation/generated_normalization_fix.go" "$work/second-output/cases/case-05-byte-identical-replay/generated/next-generation/generated_normalization_fix.go"
+
+bash scripts/compare-v010.sh "$work/output"
+bash scripts/measure-command.sh "$metrics_file" integration bash scripts/integration.sh "$work/output"
 
 rm -rf "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"
 cp -R "$work/output" "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"

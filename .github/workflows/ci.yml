@@ -25,6 +25,9 @@ jobs:
           cache: false
       - name: Verify Go 1.27
         run: test "$(go env GOVERSION)" = "go1.27.0"
+      - name: Initialize exact CI measurements
+        run: |
+          : > "$RUNNER_TEMP/gooo-ci-metrics.tsv"
       - name: Verify formatting
         shell: bash
         run: |
@@ -33,12 +36,16 @@ jobs:
           test -z "$files"
       - name: Verify vet
         run: go vet ./...
+      - name: Compile runner
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" compile go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+      - name: Build repository
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" build go build ./...
       - name: Verify tests
-        run: go test ./...
-      - name: Build runner
-        run: go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+        run: bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" test go test ./...
       - name: Run closed-loop conformance
-        run: bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin"
+        run: |
+          bash scripts/measure-command.sh "$RUNNER_TEMP/gooo-ci-metrics.tsv" conformance bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" "$RUNNER_TEMP/gooo-ci-metrics.tsv"
+          bash scripts/finalize-evidence.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence" "$RUNNER_TEMP/gooo-ci-metrics.tsv"
       - name: Publish human receipt
         run: cat "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence/runner-report.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload exact evidence
@@ -76,10 +83,4 @@ jobs:
         run: |
           set -euo pipefail
           evidence="$RUNNER_TEMP/closed-loop-evidence/evidence.json"
-          jq -e '
-            .cases[] | select(.id == "case-01-one-bug-repair") |
-            .baseline.status == "FAIL" and .evolved.status == "PASS" and
-            .bootstrap.status == "PASS" and .stages[4].terminal_reason == "NEXT_GENERATION_BUILT"
-          ' "$evidence"
-          test -f "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
-          grep -q 'normalizationMode = "upper"' "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
+          bash scripts/integration.sh "$RUNNER_TEMP/closed-loop-evidence"
