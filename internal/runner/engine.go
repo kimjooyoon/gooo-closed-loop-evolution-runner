@@ -538,7 +538,7 @@ func applyRewrite(root string, candidate Candidate) error {
 	if candidate.Operation.Artifact != candidate.Rewrite.Output {
 		return fmt.Errorf("rewrite output and operation artifact differ")
 	}
-	if !strings.HasPrefix(filepath.ToSlash(candidate.Operation.Artifact), "generated/") {
+	if !strings.HasPrefix(filepath.ToSlash(candidate.Operation.Artifact), "generated_") {
 		return fmt.Errorf("rewrite artifact escapes compiler generated root")
 	}
 	var body string
@@ -603,13 +603,12 @@ func sameArtifact(left, right ArtifactSnapshot) bool {
 
 func snapshotGenerated(root string) (ArtifactSnapshot, error) {
 	result := emptyArtifactSnapshot()
-	generatedRoot := filepath.Join(root, "generated")
 	files := stringMap{}
-	err := filepath.WalkDir(generatedRoot, func(path string, entry os.DirEntry, walkErr error) error {
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() {
+		if entry.IsDir() || filepath.Ext(path) != ".go" || !strings.HasPrefix(entry.Name(), "generated_") {
 			return nil
 		}
 		data, err := os.ReadFile(path)

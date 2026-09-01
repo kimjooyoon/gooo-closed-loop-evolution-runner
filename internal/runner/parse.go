@@ -320,7 +320,7 @@ func validateCandidate(candidate Candidate, meta MetaSource) error {
 			return fmt.Errorf("candidate %q uses undeclared capability %q", candidate.ID, capability)
 		}
 	}
-	if !strings.HasPrefix(filepath.ToSlash(candidate.Operation.Artifact), "generated/") || candidate.Operation.Kind != "install_normalizer" {
+	if !strings.HasPrefix(filepath.ToSlash(candidate.Operation.Artifact), "generated_") || candidate.Operation.Kind != "install_normalizer" {
 		return fmt.Errorf("candidate %q is outside the typed normalizer rewrite", candidate.ID)
 	}
 	return nil
