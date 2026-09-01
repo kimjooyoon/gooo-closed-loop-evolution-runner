@@ -1,0 +1,85 @@
+name: Closed-loop evolution runner CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    env:
+      SUBJECT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SUBJECT_SHA }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version: 1.27.0
+          cache: false
+      - name: Verify Go 1.27
+        run: test "$(go env GOVERSION)" = "go1.27.0"
+      - name: Verify formatting
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(gofmt -l $(git ls-files '*.go'))
+          test -z "$files"
+      - name: Verify vet
+        run: go vet ./...
+      - name: Verify tests
+        run: go test ./...
+      - name: Build runner
+        run: go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
+      - name: Run closed-loop conformance
+        run: bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin"
+      - name: Publish human receipt
+        run: cat "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence/runner-report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload exact evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gooo-closed-loop-evolution-runner-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/gooo-closed-loop-evolution-runner-evidence
+          if-no-files-found: error
+
+  semantic-audit:
+    needs: conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: gooo-closed-loop-evolution-runner-evidence-*
+          path: ${{ runner.temp }}/closed-loop-evidence
+          merge-multiple: true
+      - name: Run semantic audit
+        run: bash scripts/semantic-audit.sh "$RUNNER_TEMP/closed-loop-evidence"
+
+  integration:
+    needs: semantic-audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: gooo-closed-loop-evolution-runner-evidence-*
+          path: ${{ runner.temp }}/closed-loop-evidence
+          merge-multiple: true
+      - name: Verify generated compiler behavior and terminal witnesses
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/closed-loop-evidence/evidence.json"
+          jq -e '
+            .cases[] | select(.id == "case-01-one-bug-repair") |
+            .baseline.status == "FAIL" and .evolved.status == "PASS" and
+            .bootstrap.status == "PASS" and .stages[4].terminal_reason == "NEXT_GENERATION_BUILT"
+          ' "$evidence"
+          test -f "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
+          grep -q 'normalizationMode = "upper"' "$RUNNER_TEMP/closed-loop-evidence/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"

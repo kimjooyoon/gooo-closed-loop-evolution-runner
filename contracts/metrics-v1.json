@@ -1,0 +1,16 @@
+{
+  "schema": "gooo/closed-loop-evolution-runner/metrics/v1",
+  "authority": "metacode-denominator-and-stage-declarations",
+  "inventory_excludes": ["README.md", ".git"],
+  "integer_fields": [
+    "go_files", "gooo_files", "physical_lines", "descendant_dirs", "regular_files",
+    "generated_files", "generated_bytes", "wall_ms", "peak_rss_kib",
+    "tests_total", "tests_selected", "tests_executed", "tests_reused", "tests_failed", "tests_unknown",
+    "stage_wall_ms", "stage_peak_rss_kib"
+  ],
+  "fixed_stage_count": 8,
+  "repository_writes": 0,
+  "improvement_identity": ["scenario_digest", "source_digest", "contract_digest", "toolchain_digest", "runner_digest"],
+  "forbidden_outputs": ["score", "weighted_average", "estimated_percentage"]
+}
+

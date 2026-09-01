@@ -1,0 +1,60 @@
+{
+  "schema": "gooo/closed-loop-evolution-runner/immutable-tool-lock/v1",
+  "version": "v1",
+  "authority": "immutable_public_release_only",
+  "immutable_release_required": true,
+  "sibling_checkout_consumption": false,
+  "tools": [
+    {
+      "id": "counterexample-reducer@v0.1.1",
+      "repository": "kimjooyoon/gooo-semantic-counterexample-reducer",
+      "tag": "v0.1.1",
+      "tag_object": "cc225db786718083a81264398096b75a23301646",
+      "target_commit": "395f3faba810f0dd8f091cb6180527c7240eee61",
+      "release_id": 380148374,
+      "immutable": true,
+      "asset": {"name": "reduction-report-v0.1.1.json", "digest": "sha256:1124d7378125128900827e82f8ab87ab3751b7ab0c06b9fd29e081ed9d28a37c", "role": "counterexample_reducer"}
+    },
+    {
+      "id": "rewriter@v0.1.1",
+      "repository": "kimjooyoon/gooo-counterexample-guided-rewriter",
+      "tag": "v0.1.1",
+      "tag_object": "8a20f1b72302e2c52efed3a6949093911e36fb01",
+      "target_commit": "bb4f64b9cf714bc7147c3b3d6ce202cf2b1579d6",
+      "release_id": 380240322,
+      "immutable": true,
+      "asset": {"name": "gooo-counterexample-guided-rewriter-v0.1.1.tar.gz", "digest": "sha256:2019d42b7050f2c894f839d9c87c261291b43bd54eb7251e11e8485059b907cf", "role": "typed_rewriter"}
+    },
+    {
+      "id": "sandbox@v0.1.1",
+      "repository": "kimjooyoon/gooo-self-rewrite-sandbox",
+      "tag": "v0.1.1",
+      "tag_object": "7afaab763564e356e454db4d63d22ffa7ba53f14",
+      "target_commit": "bccfd3a740f3d9c254d715e01a61a7554e96568a",
+      "release_id": 380237396,
+      "immutable": true,
+      "asset": {"name": "gooo-self-rewrite-sandbox-source-v0.1.1.tar.gz", "digest": "sha256:16ac09b679257fc77dce92d538d79e8676eea088ef499bc73c10290a4b1e5b1b", "role": "temporary_sandbox"}
+    },
+    {
+      "id": "test-selector@v1.0.6",
+      "repository": "kimjooyoon/gooo-causal-test-selector",
+      "tag": "v1.0.6",
+      "tag_object": "727120373d5b5e0b3ec511daab85c223fafd441e",
+      "target_commit": "365d7020dc5b7abe154d0497dabfd226c0e86845",
+      "release_id": 380242332,
+      "immutable": true,
+      "asset": {"name": "evidence-v1.0.6.tar.gz", "digest": "sha256:a3f9537763bc894d6dca44036a85197c8722d7f8b78d903f0fd53210b77b9bcb", "role": "causal_test_selector"}
+    },
+    {
+      "id": "diverse-bootstrap@v0.1.1",
+      "repository": "kimjooyoon/gooo-diverse-bootstrap-witness",
+      "tag": "v0.1.1",
+      "tag_object": "fcb1f430f0ff02c3ab03fdb2621b79a1cd23e5c9",
+      "target_commit": "6ccee377de7f854958bf661b45a6e521d9adb7a2",
+      "release_id": 380241759,
+      "immutable": true,
+      "asset": {"name": "v0.1.1-source.tar.gz", "digest": "sha256:c26e50a23c0474da448c9c31bc07b3a043b11e6389eefbb8243faad0f76c4682", "role": "independent_bootstrap"}
+    }
+  ]
+}
+
