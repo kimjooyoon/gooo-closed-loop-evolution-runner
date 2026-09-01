@@ -51,7 +51,7 @@ type runContext struct {
 	UnknownTests    int
 }
 
-var goTestTiming = regexp.MustCompile(`\([0-9]+\.[0-9]+s\)`)
+var goTestTiming = regexp.MustCompile(`\([0-9]+\.[0-9]+s\)| [0-9]+\.[0-9]+s`)
 
 func Run(input RunInput) (Evidence, error) {
 	started := time.Now()
@@ -606,7 +606,12 @@ func runCommand(root string, command []string, terminalReason string) TerminalEv
 }
 
 func stableTestOutput(value string) string {
-	return goTestTiming.ReplaceAllString(value, "(<duration>)")
+	return goTestTiming.ReplaceAllStringFunc(value, func(match string) string {
+		if strings.HasPrefix(match, "(") {
+			return "(<duration>)"
+		}
+		return " <duration>"
+	})
 }
 
 func sameTerminal(left, right TerminalEvidence) bool {
