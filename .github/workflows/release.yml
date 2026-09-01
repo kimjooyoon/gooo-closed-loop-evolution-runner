@@ -27,13 +27,15 @@ jobs:
         with:
           go-version: 1.27.0
           cache: false
-      - name: Refuse reused tag or release
+      - name: Verify existing annotated tag and refuse reused release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
         run: |
           set -euo pipefail
-          test -z "$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | tr -d '\n')"
+          test -n "$(git ls-remote --tags origin "refs/tags/$RELEASE_TAG" | tr -d '\n')"
+          bash scripts/verify-release-boundary.sh tag "$RELEASE_TAG" "$RELEASE_COMMIT"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "release already exists; refusing overwrite" >&2
             exit 1
@@ -50,14 +52,6 @@ jobs:
           go build -trimpath -o "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin" ./cmd/gooo-closed-loop-evolution-runner
       - name: Generate exact CI evidence
         run: bash scripts/conformance.sh "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-bin"
-      - name: Create annotated tag
-        env:
-          RELEASE_TAG: ${{ inputs.tag }}
-          RELEASE_COMMIT: ${{ inputs.commit }}
-        run: |
-          set -euo pipefail
-          git tag -a "$RELEASE_TAG" "$RELEASE_COMMIT" -m "gooo-closed-loop-evolution-runner $RELEASE_TAG"
-          git push origin "$RELEASE_TAG"
       - name: Stage immutable release assets
         id: assets
         env:
@@ -103,4 +97,3 @@ jobs:
             observed=$(jq -er --arg name "$name" '.assets[] | select(.name == $name) | .digest' <<<"$response")
             test "$expected" = "$observed"
           done
-
