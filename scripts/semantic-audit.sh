@@ -21,7 +21,7 @@ jq -e '
 	([.cases[] | select(.id == "case-01-one-bug-repair") | select(.state == "CLOSED" and .baseline.status == "FAIL" and .evolved.status == "PASS" and .bootstrap.status == "PASS" and .promoted_artifact == true)] | length) == 1 and
 	([.cases[] | select(.id == "case-03-semantic-drift") | select(.state == "REFUTED" and .promoted_artifact == false)] | length) == 1 and
 	([.cases[] | select(.id == "case-05-byte-identical-replay") | select(.state == "CLOSED" and .replay_equal == true)] | length) == 1 and
-	([.cases[].stages[] | select((.input_digest | startswith("sha256:")) | not or (.output_digest | startswith("sha256:")) | not or .capability == "" or .terminal_reason == "" or .next_operation == "")] | length) == 0 and
+	([.cases[].stages[] | select(((.input_digest | startswith("sha256:")) | not) or ((.output_digest | startswith("sha256:")) | not) or .capability == "" or .terminal_reason == "" or .next_operation == "")] | length) == 0 and
 	.authority.repository_writes == 0 and .authority.commit_authority == 0 and .authority.merge_authority == 0 and .authority.release_authority == 0
 ' "$evidence"
 
@@ -30,4 +30,3 @@ if rg -n 'git (commit|merge|push|reset|checkout)|gh (pr merge|release delete)|rm
 	exit 1
 fi
 printf 'semantic audit: CLOSED vector, UNKNOWN frontier, REFUTED guard, and zero mutation authority verified\n'
-
