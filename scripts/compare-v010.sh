@@ -47,7 +47,11 @@ projection() {
 
 projection "$baseline" > "$baseline_tmp/baseline-projection.json"
 projection "$current" > "$baseline_tmp/current-projection.json"
-cmp -s "$baseline_tmp/baseline-projection.json" "$baseline_tmp/current-projection.json"
+if ! cmp -s "$baseline_tmp/baseline-projection.json" "$baseline_tmp/current-projection.json"; then
+	echo 'v0.1.0 preservation projection mismatch' >&2
+	diff -u "$baseline_tmp/baseline-projection.json" "$baseline_tmp/current-projection.json" >&2 || true
+	exit 1
+fi
 
 for artifact in \
 	"case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go" \
@@ -55,7 +59,10 @@ for artifact in \
 	"case-05-byte-identical-replay/generated/replay/generated_normalization_fix.go"; do
 	test -f "$current_dir/cases/$artifact"
 	test -f "$baseline_tmp/extracted/cases/$artifact"
-	cmp -s "$current_dir/cases/$artifact" "$baseline_tmp/extracted/cases/$artifact"
+	if ! cmp -s "$current_dir/cases/$artifact" "$baseline_tmp/extracted/cases/$artifact"; then
+		echo "v0.1.0 generated artifact mismatch: $artifact" >&2
+		exit 1
+	fi
 done
 
 printf 'v0.1.0 preservation: case terminals, immutable tool locks, generated artifacts, and replay bytes identical\n'

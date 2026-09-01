@@ -62,14 +62,16 @@ jq -e '
 	([.cases[].stages[] | select(.input_digest == "" or .output_digest == "" or .capability == "" or .terminal_reason == "" or .next_operation == "")] | length) == 0
 ' "$work/output/evidence.json"
 
-jq -S 'del(.metrics, .artifact_count, .cases[].stages[].wall_ms, .cases[].stages[].peak_rss_kib, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/output/evidence.json" > "$work/first-semantic.json"
-jq -S 'del(.metrics, .artifact_count, .cases[].stages[].wall_ms, .cases[].stages[].peak_rss_kib, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/second-output/evidence.json" > "$work/second-semantic.json"
+jq -S 'del(.metrics, .artifact_count, .cases[].stages[].wall_ms, .cases[].stages[].peak_rss_kib, .cases[].stages[].input_digest, .cases[].stages[].output_digest, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/output/evidence.json" > "$work/first-semantic.json"
+jq -S 'del(.metrics, .artifact_count, .cases[].stages[].wall_ms, .cases[].stages[].peak_rss_kib, .cases[].stages[].input_digest, .cases[].stages[].output_digest, .cases[].baseline.stdout, .cases[].baseline.stderr, .cases[].baseline.output_digest, .cases[].evolved.stdout, .cases[].evolved.stderr, .cases[].evolved.output_digest, .cases[].bootstrap.stdout, .cases[].bootstrap.stderr, .cases[].bootstrap.output_digest, .cases[].build.stdout, .cases[].build.stderr, .cases[].build.output_digest)' "$work/second-output/evidence.json" > "$work/second-semantic.json"
 cmp -s "$work/first-semantic.json" "$work/second-semantic.json"
 cmp -s "$work/output/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go" "$work/second-output/cases/case-01-one-bug-repair/generated/next-generation/generated_normalization_fix.go"
 cmp -s "$work/output/cases/case-05-byte-identical-replay/generated/next-generation/generated_normalization_fix.go" "$work/second-output/cases/case-05-byte-identical-replay/generated/next-generation/generated_normalization_fix.go"
 
 bash scripts/compare-v010.sh "$work/output"
+printf 'v0.1.0 preservation comparison passed\n'
 bash scripts/measure-command.sh "$metrics_file" integration bash scripts/integration.sh "$work/output"
+printf 'integration measurement passed\n'
 
 rm -rf "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"
 cp -R "$work/output" "$RUNNER_TEMP/gooo-closed-loop-evolution-runner-evidence"
